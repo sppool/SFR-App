@@ -3,7 +3,6 @@ import math
 import matplotlib
 import matplotlib.pyplot as plt
 import cv2
-import os
 
 
 def show_(img, s=5):  # show the image
@@ -76,33 +75,36 @@ def GetFFTArr(roi):
     # plt.show()
 
     # 傅立葉轉換且正規化
-    aft = np.fft.fft(LSF)
-    n = aft.shape[0] + 1
-    out = np.abs(aft[:n//2])
-    out /= out[0]
-    plt.close()
-    # plt.figure(figsize=(10, 8))
-    plt.plot(np.linspace(0, 1, n//2), out)
-    plt.ylim(bottom=0, top=out.max() * 1.05)
-    plt.show()
+    fft = np.fft.fft(LSF)
+    n = fft.size + 1
+    fft = np.abs(fft[:n // 2])
+    fft /= fft[0]
+    fft *= 100  # 百分比
 
-    return out
+    return fft
 
 
-def GetArrFreqVal(arr, freq):
+def GetArrFreqVal(fft, freq):
     if freq == 1:
-        return arr[-1] * 100
+        return fft[-1]
 
     if freq == 0:
-        return arr[0] * 100
+        return fft[0]
 
     # 取指定頻率的值
-    f_ind = (arr.size - 1) * freq
+    f_ind = (fft.size - 1) * freq
     i_ind = int(f_ind)
     f_ind -= i_ind
-    res = arr[i_ind]
-    offset = (arr[i_ind] - arr[i_ind + 1]) * f_ind
+    res = fft[i_ind]
+    offset = (fft[i_ind] - fft[i_ind + 1]) * f_ind
     res += offset
-    res *= 100
 
     return res
+
+
+def ShowFFTImg(fft):
+    # Shoe 圖
+    plt.close()
+    plt.plot(np.linspace(0, 1, fft.size), fft)
+    plt.ylim(bottom=0, top=fft.max() * 1.05)
+    plt.show()

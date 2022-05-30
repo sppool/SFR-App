@@ -1,5 +1,4 @@
-from time import sleep
-from PyQt5 import QtWidgets, QtGui, QtCore
+from PyQt5 import QtWidgets
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import QFileDialog
 import numpy as np
@@ -15,7 +14,7 @@ class MainWindow_controller(QtWidgets.QMainWindow):
         super().__init__()  # in python3, super(Class, self).xxx = super().xxx
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
-        self.path = os.getcwd() + '\img'
+        self.path = f'{os.getcwd()}\img'
         self.ui.lineEditFileName.setText(self.path)
         self.UI_Connect()
         self.img = 0
@@ -26,10 +25,14 @@ class MainWindow_controller(QtWidgets.QMainWindow):
 
     def UI_Connect(self):  # 事件連結
         self.ui.pushButtonChoiceFile.clicked.connect(self.OpenFile)
-        self.ui.pushButtonShowROI.clicked.connect(self.ReflashImage)
         self.ui.pushButtonCalculate.clicked.connect(self.Calculate)
+        self.ui.pushButtonShowFourierFunc.clicked.connect(self.ShowFourierFunc)
         self.ui.horizontalSliderFrequencyValue.valueChanged.connect(
             self.getslidervalue)
+        self.ui.lineEditX.textEdited.connect(self.ReflashImage)
+        self.ui.lineEditY.textEdited.connect(self.ReflashImage)
+        self.ui.lineEditW.textEdited.connect(self.ReflashImage)
+        self.ui.lineEditH.textEdited.connect(self.ReflashImage)
 
     def OpenFile(self):  # 選取文件
         self.path, filetype = QFileDialog.getOpenFileName(
@@ -39,11 +42,13 @@ class MainWindow_controller(QtWidgets.QMainWindow):
         self.ReflashImage()  # 預設Show 出圖跟Roi
 
     def ReflashImage(self):  # Reflash
-        self.RefreshROIData()
-        self.ShowImage()
-        self.ShowROI()
+        if self.RefreshROIData():
+            self.ShowImageRefrash()
+            self.ShowROIRefrash()
+        else:
+            pass
 
-    def ShowImage(self):
+    def ShowImageRefrash(self):
         if type(self.img) == np.ndarray:  # 確認影像有無
             img_show = self.img.copy()  # 要拿來畫圖的影像 copy 一份
             cv2.rectangle(img_show, (self.roi_x, self.roi_y),
@@ -64,7 +69,7 @@ class MainWindow_controller(QtWidgets.QMainWindow):
         else:
             self.MsgRefresh('Image is Empty !!')
 
-    def ShowROI(self):
+    def ShowROIRefrash(self):
         if type(self.img) == np.ndarray:  # 確認影像有無
             self.roi = self.img[self.roi_y:self.roi_y + self.roi_h,
                                 self.roi_x:self.roi_x + self.roi_w].copy()
@@ -80,26 +85,42 @@ class MainWindow_controller(QtWidgets.QMainWindow):
         self.Freq = self.ui.horizontalSliderFrequencyValue.value() / 10
         self.ui.labelFrequencyValue.setText(
             f'Frequency: {self.Freq}')
-        self.SFRValue = SFR.GetArrFreqVal(self.FFTArr, self.Freq)
-        self.ui.labelSFRValue.setText(f'SFR({self.Freq}): {self.SFRValue:.2f}')
+        self.SFRRefresh()
 
     def Calculate(self):
         if type(self.roi) == np.ndarray:  # 確認影像有無
+            self.ReflashImage()
             roi_bw = cv2.cvtColor(self.roi, cv2.COLOR_BGR2GRAY)
             self.FFTArr = SFR.GetFFTArr(roi_bw)
-            self.SFRValue = SFR.GetArrFreqVal(self.FFTArr, self.Freq)
-            self.ui.labelSFRValue.setText(
-                f'SFR({self.Freq}): {self.SFRValue:.2f}')
+            self.SFRRefresh()
 
+            return True
         else:
             self.MsgRefresh('ROI is Empty !!')
 
-    def MsgRefresh(self, Msg):
+            return False
+
+    def ShowFourierFunc(self):
+        if self.Calculate():
+            SFR.ShowFFTImg(self.FFTArr)
+
+    def SFRRefresh(self):
+        self.SFRValue = SFR.GetArrFreqVal(self.FFTArr, self.Freq)
+        self.ui.labelSFRValue.setText(f'SFR({self.Freq}): {self.SFRValue:.2f}')
+
+    def MsgRefresh(self, Msg: str):
         self.ui.labelMsg.setText(Msg)
         print(Msg)
 
     def RefreshROIData(self):
-        self.roi_x = int(self.ui.lineEditX.text())
-        self.roi_y = int(self.ui.lineEditY.text())
-        self.roi_w = int(self.ui.lineEditW.text())
-        self.roi_h = int(self.ui.lineEditH.text())
+        try:
+            self.roi_x = int(self.ui.lineEditX.text())
+            self.roi_y = int(self.ui.lineEditY.text())
+            self.roi_w = int(self.ui.lineEditW.text())
+            self.roi_h = int(self.ui.lineEditH.text())
+
+            return True
+        except:
+            self.MsgRefresh('請設定整數')
+
+            return False
